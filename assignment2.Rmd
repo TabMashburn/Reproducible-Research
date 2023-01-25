@@ -1,0 +1,312 @@
+
+=================================================================================
+
+### The most harmful storm events for health and economy in the U.S
+date: "October 14, 2015"
+
+================================================================================
+
+## Synopsis
+
+I cleaned and analyzed the NOAA storm data from 1950-2011 in this exercise and there are two main research goals: 1) Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+2) which types of events have the greatest economic consequences? My work show that out of the 48 storm event types (permitted by NOAA database), the most harmful events for health are tornado, excessive heat, flood, thunderstorm wind and lightening. The most harmful events for economy are: Hurriance(aka Typhoon), storm surge, Flood, and Tornado. Therefore, policy makers who might be responsible for preparing for severe weather events need to take these data into consideration and prioritize resources for different types of events.
+
+## Data Processing
+setwd("set your working directory here")
+
+```{r loadingPackages, warning=F, message=FALSE,cache=TRUE, echo=TRUE}
+# load relavant R packages for this work
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(R.utils)
+library(readr)
+library(reshape2) 
+```
+
+``` {r download data, warning=F, message=FALSE, cache=TRUE,echo=TRUE}
+# download and unzip data, then read data
+
+# Unzipping the file externally (becasue the file is a bit large) to save memory
+
+if(!file.exists("stormDT.csv")){
+     library(R.utils) 
+     dlMethod <- "curl"
+     if(substr(Sys.getenv("OS"),1,7) == "Windows") dlMethod <- "wininet"
+     url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+     download.file(url,destfile='stormDT.csv.bz2',method=dlMethod,mode="wb")
+     bunzip2("stormDT.csv.bz2",
+          "stormDT.csv")
+}
+
+#the readr::read_csv is mangintude faster than read.csv in the base R. NOTE: because this analyses focuses on storm events impact oon health and economy, I have only kept relavant columns from the data for the orginal data. Other columns are discarded by set col_types with a compact string as below:
+
+stormDT1 <- read_csv("stormDT.csv",
+     n_max = 902297,         # use n_max if N is known, to allocate memory efficiently
+     col_types ="ic__iccc______________iidcdc_______ci") #designates columns to skip
+
+# note you can read the csv.bz2 directly (as following), but it uses up a lot of memories. Becaes bz2 only have one file in it, therefore it is possible use read.csv() to read it directly.
+
+# fileUrl<-"https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+# download.file(fileUrl,destfile="stormDT.csv.bz2",method="curl")
+# stromDT1<-read.csv("stromDT.csv")
+```
+
+###Strategy of mapping EVTYPE with multiple evnet types for health related data
+
+#### I only selected that the events which greater than 0 fatalities or injuries because this assignment asks for the comparing the which event(s) cause the most injuries and falaty. 
+```{r cleaningHealthData, warning=F, message=FALSE, cache=TRUE }
+
+stormDT1$BGN_DATE<-as.Date(stormDT1$BGN_DATE, "%m/%d/%Y 0:00:00")
+
+# add a year column
+stormDT1$YEAR <- as.POSIXlt(stormDT1$BGN_DATE)$year + 1900
+
+# I used all data from 1996-2011 becasue: 1) From 1950 through 1954, only tornado events were recorded; 2) From 1955 through 1992, only tornado, thunderstorm wind and hail events were keyed from the paper publications into digital data; 3) From 1996 to present, 48 event types are recorded as defined in NWS Directive 10-1605. Therefore there is no true comparable data for all 48 types of events for the years 1950 through 1995.
+
+stormDT2<-stormDT1[stormDT1$YEAR>=1996,]
+
+# remove observations there are no fatatlities and injuries
+healthDT1<-stormDT2%>%
+        filter(FATALITIES!=0|INJURIES!=0)%>%
+        select(-(PROPDMG:CROPDMGEXP))
+
+# mapping event types in this file by the event types that is permitted in NOAA Storm Data (pleease see the NWS 10-1605 page 6). 
+
+# change to upper case
+healthDT1$EVTYPE<-toupper(healthDT1$EVTYPE)
+
+# Mapping the EVTYPE with the 48 event types that is offically permitted by NOAA
+healthDT1$EVTYPE <- sub("^AVAL.*", "AVALANCHE", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^COLD.*", "COLD", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^COASTAL.*", "COASTAL FLOOD", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^DUST DEVIL.*", "DUST DEVIL", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^FLASH FLOOD.*", "FLASH FLOOD", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^FLOOD.*", "FLOOD", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^HEAVE SNOW.*", "HEAVE SNOW", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^HIGH WIND.*", "HIGH WIND", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^HURRICANE.*", "HURRICANE", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^LIGHTNING.*", "LIGHTNING", healthDT1$EVTYPE)
+
+healthDT1$EVTYPE <- sub("^RAPIDLY RISING WATER.*", "HEAVY RAIN", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^SNOW.*", "SNOW", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^STRONG WIND.*", "STRONG WIND", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^TORN.*", "TORNADO", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^THU.*", "THUNDERSTORM WIND", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^WATER.*", "WATERSPOUT", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^WINTER STORM.*", "WINTERSTORM", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^RIP CURRENT.*", "RIP CURRENT", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^WILD.*", "WILDFIRE", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^TSTM.*", "THUNDERSTROM WIND", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^THUNDER.*", "THUNDERSTROM WIND", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^TROPICAL.*", "TROPICAL STORM", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^FOG", "DENSE FOG", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^TIDAL FLOODING", "COASTAL FLOOD", healthDT1$EVTYPE)
+
+healthDT1$EVTYPE <- sub("^WIND.*", "HIGH WIND", healthDT1$EVTYPE)
+healthDT1$EVTYPE <- sub("^NON TSTM WIND", "STRONG WIND", healthDT1$EVTYPE)
+
+healthDT1$EVTYPE <-sub("^RIVER FLOOD.*", "FLOOD",healthDT1$EVTYPE)
+healthDT1$EVTYPE <-sub("^NON TSTM WIND", "STRONG WIND",healthDT1$EVTYPE)
+healthDT1$EVTYPE <-sub("^NON-SEVERE WIND DAMAGE","HIGH WIND",healthDT1$EVTYPE)
+
+healthDT1$EVTYPE[grep(pattern = "HURRICANE|TYPHOON", healthDT1$EVTYPE)]<-"HURRICANE(TYPHOON)"
+healthDT1$EVTYPE[grep(pattern = "HIGH SURF|HIGH WATER|HIGH WAVES|HIGH SWELLS|HIGH SEAS|HEAVY SURF|HEAVY SEAS|HIGH|WAVE|ROUGH|SURF", healthDT1$EVTYPE)] <- "HIGH SURF"
+healthDT1$EVTYPE[grep(pattern = "SMALL HAIL|HAIL", healthDT1$EVTYPE)] <- "HAIL"
+healthDT1$EVTYPE[grep(pattern = "BRUSH FIRE", healthDT1$EVTYPE)] <- "WILDFIRE"
+healthDT1$EVTYPE[grep(pattern = "ICE|ICE ON STROM|BLACK ICE|ICY ROADS", healthDT1$EVTYPE)] <- "FREEZE"
+healthDT1$EVTYPE[grep(pattern = "COOL|COLD|HYPOTHERMIA/EXPOSURE|HYPOTHERMIA|HYPERTHERMIA/EXPOSURE", healthDT1$EVTYPE)] <- "COLD"
+healthDT1$EVTYPE[grep(pattern = "COASTAL STROM|COASTALSTROM",  healthDT1$EVTYPE)] <- "MARINAE STRONG WIND"
+healthDT1$EVTYPE[grep(pattern = "SNOW|BLOWING SNOW|RAIN|SNOW",  healthDT1$EVTYPE)] <- "HEAVY SNOW"
+healthDT1$EVTYPE[grep(pattern = "HOT|WARM|HEAT|HIGH TEMP|TEMPERATURE", healthDT1$EVTYPE)] <- "EXCESSIVE HEAT"
+healthDT1$EVTYPE[grep(pattern = "MINOR FLOODING|DROWNING|FLASH FLOOD|URBAN/SML STREAM FLD|URBAN AND SMALL STREAM FLOODIN", healthDT1$EVTYPE)] <- "FLASH FLOOD"
+healthDT1$EVTYPE[grep(pattern = "GLAZE|WINTER WEATHER|WINTRY MIX|MIXED PRECIP", healthDT1$EVTYPE)] <- "WINTER WEATHER"
+healthDT1$EVTYPE[grep(pattern = "FREEZING DRIZZLE|FREEZE|FREEZING SPRAY", healthDT1$EVTYPE)] <- "FREEZE"
+healthDT1$EVTYPE[grep(pattern = "EXCESSIVE RAINFALL|TORRENTIAL RAINFALL|HEAVY RAINS", healthDT1$EVTYPE)] <- "HEAVY RAIN"
+healthDT1$EVTYPE[grep(pattern = "MUDSLIDE|LANDSLIDE|LANDSLIDES", healthDT1$EVTYPE)]<-"DEBRIS FLOW"
+healthDT1$EVTYPE[grep(pattern = "MARINE ACCIDENT|MARINE MISHAP|MARINE HIGH WIND", healthDT1$EVTYPE)]<-"MARINE HIGH WIND"
+healthDT1$EVTYPE[grep(pattern = "MARINE TSTM WIND|MARINE THUNDERSTORM WIND", healthDT1$EVTYPE)]<-"MARINE THUNDERSTORM WIND"
+healthDT1$EVTYPE[grep(pattern = "OTHER|WHIRLWIND", healthDT1$EVTYPE)]<-"DUST DEVIL"
+healthDT1$EVTYPE[grep(pattern= "DRY MIRCOBURST WINDS|DRY MICROBURST|GUSTY WIND", healthDT1$EVTYPE)]<-"HIGH WIND"
+
+```
+
+```{r  summarise health data, warning=F, message=FALSE, cache=TRUE}
+
+# cacluate the total health related damage for each storm event type. 
+healthsummaryDT<-healthDT1%>%
+                group_by(EVTYPE)%>%
+                summarise(totalFatality=sum(FATALITIES),totalInjury=sum(INJURIES))%>%
+                arrange(desc(totalInjury))
+
+# change the order of factor levels by specifying the order explicitly based on totalInjury
+
+healthsummaryDT$EVTYPE<-factor(healthsummaryDT$EVTYPE,
+                               levels=healthsummaryDT$EVTYPE[order(healthsummaryDT$totalInjury)])
+
+knitr::kable(healthsummaryDT,caption="Table 1. The most harmful storm events for health in the U.S.")
+```
+
+### strategy to deal with property and crop damage related data
+
+#### the data will also only from 1996-2011 as described above; the econimic data will be also considered for those property or crop damage exceeded 0 US dollors.
+
+``` {r economicData, warning=F, message=FALSE, cache=TRUE}
+#subset a data set with its observations at least PROGDMG AND CROPDMG 
+ecoDT1<-stormDT2%>%
+        filter(PROPDMG>0 | CROPDMG>0)%>%
+        select(-(FATALITIES:INJURIES))
+
+# mapping event types in this file by the event types that is permitted in NOAA Storm Data (pleease see the NWS 10-1605 page 6). 
+
+# 1.change all event types to upper case
+
+ecoDT1$EVTYPE<-toupper(ecoDT1$EVTYPE)
+  
+# mapping event types
+ecoDT1$EVTYPE <- gsub("( ){1,}", " ", gsub("[^A-Z0-9 ]", " ", ecoDT1$EVTYPE))
+ecoDT1$EVTYPE <- sub("^\\s+ ", "", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^TSTM.*", "THUNDERSTROM WIND", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^RIP.*", "RIP CURRENT", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^COLD.*", "COLD", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^COASTAL.*", "COASTAL FLOOD", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^D D .*", "DUST DEVIL", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <-sub("^M A .*", "HIGH SURF",ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^C F .*", "COSTAL FLOOD", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^C .*", "COLD", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^UNSEASONABLY WARM.*", "HEAT", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^FOG.*", "DENSE FOG", ecoDT1$EVTYPE)
+ecoDT1$EVTYPE <- sub("^M *", "TORNADO", ecoDT1$EVTYPE)
+
+ecoDT1$EVTYPE[grep(pattern = "HURRICANE|TYPHOON|HURRICANE TYPHOON", ecoDT1$EVTYPE)]<-"HURRICANE(TYPHOON)"
+ecoDT1$EVTYPE[grep(pattern = "LANDSLUMP|LANDSPOUT|MUDSLIDE|LANDSLIDE|LANDSLIDES|MUD SLIDE|ROCK SLIDE|DEBRIES FLOW|B E ", ecoDT1$EVTYPE)] <- "DEBRIES FLOW"
+ecoDT1$EVTYPE[grep(pattern = "MARINE TSTM WIND|MARINE THUNDERSTORM WIND", ecoDT1$EVTYPE)]<-"MARINE THUNDERSTORM WIND"
+ecoDT1$EVTYPE[grep(pattern = "TSTM WIND|THUNDERSTORM WIND|THUNDERSTROM WIND|T W ", ecoDT1$EVTYPE)]<-"MARINE THUNDERSTORM WIND"
+ecoDT1$EVTYPE[grep(pattern = "MARINE TSTM WIND|MARINE THUNDERSTORM WIND", ecoDT1$EVTYPE)]<-"MARINE THUNDERSTORM WIND"
+ecoDT1$EVTYPE[grep(pattern = "GLAZE|WINTER WEATHER|WINTRY MIX|MIXED PRECIP|ICE ROAD|ICY ROADS|I |E C  |M P ", ecoDT1$EVTYPE)] <- "WINTER WEATHER"
+ecoDT1$EVTYPE[grep(pattern= "GUSTY WIND HVY RAIN|GUSTY WIND|GUSTY WIND HAIL|GUSTY WINDS|GRADIENT WIND|G W|G ", ecoDT1$EVTYPE)]<-"THUNDERSTORM WIND"
+ecoDT1$EVTYPE[grep(pattern= "DRY MIRCOBURST WINDS|DRY MICROBURST|WHIRLWIND|GUSTY WIND|T F |W | W D |WIND", ecoDT1$EVTYPE)]<-"STRONG WIND"
+ecoDT1$EVTYPE[grep(pattern = "EXCESSIVE RAINFALL|TORRENTIAL RAINFALL|HEAVY RAINS| RAIN|UNSEASONAL RAIN|H R H S |RAIN|DAM BREAK", ecoDT1$EVTYPE)] <- "HEAVY RAIN"
+ecoDT1$EVTYPE[grep(pattern = "H |EXCESSIVE SNOW|HAVEY SNOW|LATE SEASON|SNOW|S S |S |O ", ecoDT1$EVTYPE)] <- "HEAVY SNOW"
+ecoDT1$EVTYPE[grep(pattern = "FROST|FREEZE|FROST FREEZE|AGRICULTURAL FREEZE|EXTREME COLD|FROST|F F |F D |F R |D F ", ecoDT1$EVTYPE)] <- "FROST/FREEZE"
+ecoDT1$EVTYPE[grep(pattern = "MINOR FLOODING|DROWNING|FLASH FLOOD|URBAN/SML STREAM FLD|URBAN AND SMALL STREAM FLOODING|URBAN SML STREAM FLD", ecoDT1$EVTYPE)] <- "FLASH FLOOD"
+ecoDT1$EVTYPE[grep(pattern = "COOL|COLD|EXTENDED COLD|E C F |E C |UNSEASONABLY COLD|U C |E F ", ecoDT1$EVTYPE)] <- "EXTRIEME COLD"
+ecoDT1$EVTYPE[grep(pattern = "R F |RIVER FLOOD|FLOOD|F ", ecoDT1$EVTYPE)] <- "FLOOD"
+
+```
+
+### Factoring the muiltiplier levels in variables: PROPDMGEXP and CROPDMGEXP
+
+```{r economicDataProcessing, warning=F, message=FALSE, cache=TRUE,echo=TRUE}
+
+# correct the erroneous for NAPA: becasue REFNUM==605943 (NAPA) had a 9 exponent for the PROPDMGEXP, REMARKS mentioned millions, which would be a 6 exponent.
+ecoDT1$PROPDMGEXP[ecoDT1$REFNUM==605943]<-6
+
+# changed all thE PROPDGMEXP AND CROPDMGEXP to uppercase (because there is k, b, as well as K and B etc)
+
+ecoDT1$PROPDMGEXP<-toupper(ecoDT1$PROPDMGEXP)
+ecoDT1$CROPDMGEXP<-toupper(ecoDT1$CROPDMGEXP)
+
+# standarize the PROPDMGEX AND CROPDMGEXP to NOAA'S standard multiiplier levels
+
+unique(ecoDT1$PROPDMGEXP) # determine how many multiplier levels in the PROGDMGEXP
+
+# substitute the numbers with "K","M","H"
+ecoDT1$PROPDMGEXP<-gsub("3","K",ecoDT1$PROPDMGEXP)
+ecoDT1$PROPDMGEXP<-gsub("6","M",ecoDT1$PROPDMGEXP)
+ecoDT1$PROPDMGEXP<-gsub("2","H",ecoDT1$PROPDMGEXP)
+
+# adjust damage cost valuas to US dollors 
+ecoDT1$PROPDMGUSD <- with(ecoDT1, 
+        ifelse(PROPDMGEXP == "K", PROPDMG * 1000, 
+            ifelse(PROPDMGEXP =="M", PROPDMG * 1e+06, 
+                ifelse(PROPDMGEXP == "B", PROPDMG * 1e+09, 
+                   ifelse(PROPDMGEXP == "H", PROPDMG * 100,
+                      ifelse(PROPDMGEXP == "5",PROPDMG * 1e+05,
+                        ifelse(PROPDMGEXP == "7",PROPDMG * 1e+07,
+                          ifelse(PROPDMGEXP == "4",PROPDMG * 1e+04,
+                                 PROPDMG * 1 ))))))))
+
+unique(ecoDT1$CROPDMGEXP) # determine how many multiplier levles in the CROPDMGEEXP
+
+# adjust damage cost valuas to US dollors 
+ecoDT1$CROPDMGUSD <- with(ecoDT1, 
+        ifelse(CROPDMGEXP == "K", CROPDMG * 1000, 
+            ifelse(CROPDMGEXP =="M", CROPDMG * 1e+06, 
+                ifelse(CROPDMGEXP == "B", CROPDMG * 1e+09, 
+                   CROPDMG * 1))))
+
+# derive the summary economic data based on the US dollors of property and crop damages
+ecosummary<-ecoDT1%>%
+        filter(EVTYPE!="L ")%>%
+        group_by(EVTYPE)%>%
+        summarise(totalPROPDMGUSD=sum(PROPDMGUSD),totalCROPDMGUSD=sum(CROPDMGUSD))%>%
+        arrange(desc(totalPROPDMGUSD))
+        
+```
+## Results
+
+#### 1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+```{r Plot1, fig.width=9, fig.height=6, fig.align='center', warning=FALSE,cache=TRUE,echo=TRUE}
+
+# For this report and figure, I only consider events which have at least caused one fatality or one injury per year. In another word, total of 15 health-related damage for the period of 1996-2011 (total of 15 years) are plotted in the figure. 
+
+topHealthDT<-healthsummaryDT%>%
+        filter((totalFatality+totalInjury)>15)
+
+# change the data into a long format
+             
+healthLong<-melt(topHealthDT)
+
+ggplot(healthLong,aes(x=EVTYPE,y=value/1000,fill=variable))+
+        geom_bar(position="dodge",stat="identity")+
+        coord_flip()+
+        labs(x="", y="Total of numbers of Fatality and Injury (thousand)")+
+        ggtitle("Fig.1 The most harmful storm events across the U.S.")+
+        theme_bw()+
+        theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank())+
+        theme(axis.text.y=element_text(size=11),
+              axis.text.x=element_text(size=12),
+              legend.position=c(.75,.1)) #tweak the numbers for the positon
+
+```
+**Conclusion: It is clear that the top five  most harmful storm event that cause the most health-related damage are tornado, excessive heat, flood, thunderstorm wind and lightening. Because I did not normalize the injury and fatality to the same economical scale, and it is hard to tell which one has more economical impact (such as medical cost, insurance, funeral cost etc). Therefore this figure is documented for total numbers of fatality and injury, not economical impact of these accidents.**
+
+#### 2. Across the United States, which types of events have the greatest economic consequences?
+
+```{r Plot2, fig.width=9,fig.height=6,fig.align='center',warning=FALSE,cache=TRUE,echo=TRUE}
+
+# change the order of factor levels by specifying the order explicitly based on property damage
+
+ecosummary$EVTYPE<-factor(ecosummary$EVTYPE,
+                          level=ecosummary$EVTYPE[order(ecosummary$totalPROPDMGUSD)])
+
+# For this report, I only consider events which have at least caused the total of 5 million USD damages (that is, the sum of property and crop damage must exceed 5 million USD ) during the period of 1996-2011 (total of 15 years). 
+
+topEcoDT<-ecosummary%>%
+        filter((totalPROPDMGUSD+totalCROPDMGUSD)>5*1e+6)
+
+# change to the long format 
+
+ecoLong<-melt(topEcoDT)
+
+levels(ecoLong$variable)[levels(ecoLong$variable)=="totalPROPDMGUSD"]<-"property"
+levels(ecoLong$variable)[levels(ecoLong$variable)=="totalCROPDMGUSD"]<-"crops"
+
+ggplot(ecoLong,aes(x=EVTYPE,y=value/1e+9,fill=variable))+
+        geom_bar(position="dodge",stat="identity")+
+        coord_flip()+
+        labs(x="", y="Total damage of property and crops (billion USD)")+
+        ggtitle("Fig.2 The most damaging storm events across the U.S.for economy")+
+        theme_bw()+theme(panel.grid.major=element_blank(),
+                         panel.grid.minor=element_blank())+
+        theme(axis.text.y=element_text(size=11),
+              axis.text.x=element_text(size=12),
+              legend.position=c(.9,.1))+
+        theme(plot.title = element_text(size = rel(1.1),face="bold"))
+```
+
+**Conclusion: From my data analysis, it is clear that the top five most harmful storm events for US.economy are: hurriance (typhoon),storm surge, flood, tornado,heavy snow. It is also clear that drought caused the most crop damage during 1996-2011. Please note, I did not count for the economical infliation during 1996-2011 when considering the property and crop damage, therefore this report may not realistically present the real economic damage.**
+
+~End of the report~
