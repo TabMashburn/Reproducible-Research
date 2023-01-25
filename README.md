@@ -14,71 +14,86 @@ The National Weather Service makes a best guess using all available data at the 
 Data Processing
 This is an example of how the data is stored.
 
-##   STATE__          BGN_DATE BGN_TIME TIME_ZONE COUNTY COUNTYNAME STATE  EVTYPE
-## 1       1 4/18/1950 0:00:00     0130       CST     97     MOBILE    AL TORNADO
-## 2       1 4/18/1950 0:00:00     0145       CST      3    BALDWIN    AL TORNADO
-##   BGN_RANGE BGN_AZI BGN_LOCATI END_DATE END_TIME COUNTY_END COUNTYENDN
-## 1         0                                               0         NA
-## 2         0                                               0         NA
-##   END_RANGE END_AZI END_LOCATI LENGTH WIDTH F MAG FATALITIES INJURIES PROPDMG
-## 1         0                        14   100 3   0          0       15    25.0
-## 2         0                         2   150 2   0          0        0     2.5
-##   PROPDMGEXP CROPDMG CROPDMGEXP WFO STATEOFFIC ZONENAMES LATITUDE LONGITUDE
-## 1          K       0                                         3040      8812
-## 2          K       0                                         3042      8755
-##   LATITUDE_E LONGITUDE_ REMARKS REFNUM
-## 1       3051       8806              1
-## 2          0          0              2
+
+
+
+
+
+
+
+
 Across the United States, 985 types of events do happen, as it can be seen from the table below.
 
-##                       EVTYPE
-## 1                    TORNADO
-## 54                 TSTM WIND
-## 55                      HAIL
-## 187560         FREEZING RAIN
-## 187561                  SNOW
-## 187562 ICE STORM/FLASH FLOOD
+
+
+
+
+
+
+
 Calculate the events that caused injuries or fatalities, and categorize them by the event name.
 
-##                  EVTYPE INJURIES
-## 1    HIGH SURF ADVISORY        0
-## 2         COASTAL FLOOD        0
-## 3           FLASH FLOOD        0
-## 4             LIGHTNING        0
-## 5             TSTM WIND        0
-## 6       TSTM WIND (G45)        0
+
+
+
+
+
+
+
 We get the events that harmed at least 1 person to narrow down the situation. Then, proceed to sort the data in descending order.
 
-##             EVTYPE INJURIES
-## 834        TORNADO    96979
-## 130 EXCESSIVE HEAT     8428
-## 856      TSTM WIND     7461
-## 170          FLOOD     7259
-## 464      LIGHTNING     6046
-## 275           HEAT     3037
+
+
+
+
+
+
+
+
+
 Plotting the graph of the events that harmed more than 1000 people.
+
+
+
+
+
+
+
+
 
 
 
 Finding the events that caused property damages, categorized by event name.
 
-##                  EVTYPE PROPDMG
-## 1    HIGH SURF ADVISORY     200
-## 2         COASTAL FLOOD       0
-## 3           FLASH FLOOD      50
-## 4             LIGHTNING       0
-## 5             TSTM WIND     108
-## 6       TSTM WIND (G45)       8
+
+
+
+
+
+
+
+
+
 Also, sorting the table just given above in a descending order.
 
-##                EVTYPE   PROPDMG
-## 834           TORNADO 3212258.2
-## 153       FLASH FLOOD 1420124.6
-## 856         TSTM WIND 1335965.6
-## 170             FLOOD  899938.5
-## 760 THUNDERSTORM WIND  876844.2
-## 244              HAIL  688693.4
+
+
+
+
+
+
+
+
+
 Narrowing down the 406 objects from the table above by limiting the property damage by minimum of $10,000. After that, Plotting the the subset I did get by narrowing down, and putting labels to see the exact numbers for the events caused more than 450,000 dollars in damage.
+
+
+
+
+
+
+
+
 
 
 
@@ -88,17 +103,25 @@ Merging the two dataset I did manage to get above, and continuing to create anot
 
 Results
 Across the United States, which types of events are most harmful with respect to population health?
-##      EVTYPE INJURIES   Freq      ratio
-## 3   TORNADO    96979  60652 1.59894150
-## 2 LIGHTNING     6046  15754 0.38377555
-## 1     FLOOD     7259  25326 0.28662244
-## 4 TSTM WIND     7461 219940 0.03392289
+
+
+
+
+
+
+
+
+
 As it can be clearly seen from the plots generated and the data set from above, natural disasters like tornado, lightning, flood and wind do seem to cause the most harm to people. Given the ratio of whenever the natural disaster was present averagely the number of people injured. The most damaging of the four do seem to be the tornado, approximately 1.6 people get injured whenever the disaster showed itself. Following that, Lightning do also injure people, which was unexpected for me of it being the second most, even higher than the floods.
 
 Across the United States, which types of events have the greatest economic consequences?
-##        EVTYPE   PROPDMG  Freq    ratio
-## 9     TORNADO 3212258.2 60652 52.96211
-## 6   LIGHTNING  603351.8 15754 38.29832
-## 2       FLOOD  899938.5 25326 35.53417
-## 1 FLASH FLOOD 1420124.6 54277 26.16439
+
+
+
+
+
+
+
+
+
 Economically, the most damaging events are the almost the same as the ones that harmed people the most. As it can be seen from the data table above, Tornado, also here is the most damaging natural event. Every tornado nearly caused 63 in monetary damage. The second and the third closely following the tornado are lightning and flood. Lightning, contrarily caused less damage on property than tornado. Floods on the other hand, do seem to be occuring more frequently than the lightning, and damages almost equally as the lightning, which is definetely a problem. Flash floods' frequency is incredible high, and caused total damage of equally to both lightning and flood together. Which is definetely poses a great problem, given the monetary damage.
